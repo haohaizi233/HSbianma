@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HS 编码采集进度</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f5f2;
+      --surface: #ffffff;
+      --surface-muted: #ecefeb;
+      --text: #1d2421;
+      --text-muted: #69716d;
+      --line: #d8ddd9;
+      --accent: #087f5b;
+      --accent-soft: #dff3ea;
+      --warning: #9a6700;
+      --warning-soft: #fff0c2;
+      --danger: #b42318;
+      --danger-soft: #fee4e2;
+      --shadow: 0 12px 34px rgba(31, 42, 36, 0.08);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+      letter-spacing: 0;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 44px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow,
+    .section-label {
+      margin: 0 0 6px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .sync-block {
+      display: grid;
+      grid-template-columns: auto auto;
+      align-items: center;
+      gap: 7px 12px;
+      min-width: 220px;
+      text-align: right;
+    }
+
+    .state-dot {
+      width: 10px;
+      height: 10px;
+      justify-self: end;
+      border-radius: 50%;
+      background: var(--text-muted);
+      box-shadow: 0 0 0 4px rgba(105, 113, 109, 0.12);
+    }
+
+    .state-dot.running {
+      background: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+
+    .state-dot.complete {
+      background: #2563eb;
+      box-shadow: 0 0 0 4px #dbeafe;
+    }
+
+    .state-dot.error {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px var(--danger-soft);
+    }
+
+    .state-label { font-size: 15px; font-weight: 700; }
+    .sync-time, .countdown { color: var(--text-muted); font-size: 12px; }
+
+    .primary {
+      padding: 28px 0 30px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .percent {
+      font-variant-numeric: tabular-nums;
+      font-size: 30px;
+      font-weight: 750;
+      line-height: 1;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      overflow: hidden;
+      border-radius: 5px;
+      background: var(--surface-muted);
+    }
+
+    .progress-bar {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent);
+      transition: width 320ms ease;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      min-width: 0;
+      min-height: 96px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .metric-label {
+      display: block;
+      margin-bottom: 13px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .metric-value {
+      display: block;
+      overflow-wrap: anywhere;
+      font-size: 24px;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      gap: 0;
+    }
+
+    .detail-section {
+      min-width: 0;
+      padding: 28px 28px 24px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .detail-section:nth-child(even) {
+      padding-right: 0;
+      padding-left: 28px;
+      border-left: 1px solid var(--line);
+    }
+
+    .facts { margin: 17px 0 0; }
+
+    .fact {
+      display: grid;
+      grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: baseline;
+      padding: 11px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .fact dt {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .fact dd {
+      min-width: 0;
+      margin: 0;
+      overflow: hidden;
+      text-align: right;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fact dd.url, .fact dd.log-line {
+      color: var(--text-muted);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .notice {
+      display: none;
+      margin-top: 22px;
+      padding: 12px 14px;
+      border: 1px solid #f5c2c0;
+      border-radius: var(--radius);
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-size: 13px;
+    }
+
+    .notice.visible { display: block; }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding-top: 18px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .details-grid { grid-template-columns: 1fr; }
+      .detail-section,
+      .detail-section:nth-child(even) {
+        padding: 24px 0;
+        border-left: 0;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 22px, 1180px); padding-top: 20px; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .sync-block { min-width: 0; text-align: left; }
+      .state-dot { justify-self: start; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .metric { min-height: 88px; padding: 13px; }
+      .metric-value { font-size: 21px; }
+      .section-head { align-items: center; }
+      .fact { grid-template-columns: 100px minmax(0, 1fr); gap: 10px; }
+      .footer { flex-direction: column; gap: 5px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">HSBIANMA 全站任务</p>
+        <h1>第三级数据采集进度</h1>
+      </div>
+      <div class="sync-block" aria-live="polite">
+        <span id="state-dot" class="state-dot"></span>
+        <span id="state-label" class="state-label">正在连接</span>
+        <span id="sync-time" class="sync-time">尚未同步</span>
+        <span id="countdown" class="countdown">准备刷新</span>
+      </div>
+    </header>
+
+    <section class="primary" aria-labelledby="detail-title">
+      <div class="section-head">
+        <div>
+          <p class="section-label">第三层详情页</p>
+          <h2 id="detail-title">成功采集进度</h2>
+        </div>
+        <output id="detail-percent" class="percent">0.00%</output>
+      </div>
+      <div
+        id="detail-track"
+        class="progress-track"
+        role="progressbar"
+        aria-label="第三级成功采集进度"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+      >
+        <div id="detail-bar" class="progress-bar"></div>
+      </div>
+      <div class="metrics">
+        <article class="metric">
+          <span class="metric-label">已入库记录</span>
+          <strong id="records" class="metric-value">0</strong>
+        </article>
+        <article class="metric">
+          <span class="metric-label">发现详情页</span>
+          <strong id="detail-total" class="metric-value">0</strong>
+        </article>
+        <article class="metric">
+          <span class="metric-label">成功完成</span>
+          <strong id="detail-done" class="metric-value">0</strong>
+        </article>
+        <article class="metric">
+          <span class="metric-label">当前处理</span>
+          <strong id="detail-active" class="metric-value">0</strong>
+        </article>
+        <article class="metric">
+          <span class="metric-label">等待处理</span>
+          <strong id="detail-pending" class="metric-value">0</strong>
+        </article>
+        <article class="metric">
+          <span class="metric-label">失败记录</span>
+          <strong id="detail-error" class="metric-value">0</strong>
+        </article>
+      </div>
+    </section>
+
+    <div class="details-grid">
+      <section class="detail-section" aria-labelledby="search-title">
+        <p class="section-label">第二层搜索页</p>
+        <h2 id="search-title">站点发现情况</h2>
+        <dl class="facts">
+          <div class="fact"><dt>搜索页总数</dt><dd id="search-total">0</dd></div>
+          <div class="fact"><dt>搜索页完成</dt><dd id="search-done">0</dd></div>
+          <div class="fact"><dt>搜索页异常</dt><dd id="search-error">0</dd></div>
+          <div class="fact"><dt>已覆盖章节</dt><dd id="chapters">0</dd></div>
+        </dl>
+      </section>
+
+      <section class="detail-section" aria-labelledby="latest-title">
+        <p class="section-label">实时活动</p>
+        <h2 id="latest-title">当前记录</h2>
+        <dl class="facts">
+          <div class="fact"><dt>正在处理</dt><dd id="active-code">—</dd></div>
+          <div class="fact"><dt>最近入库</dt><dd id="latest-code">—</dd></div>
+          <div class="fact"><dt>入库时间</dt><dd id="latest-time">—</dd></div>
+          <div class="fact"><dt>当前地址</dt><dd id="active-url" class="url" title="">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="detail-section" aria-labelledby="output-title">
+        <p class="section-label">最终成果</p>
+        <h2 id="output-title">工作簿状态</h2>
+        <dl class="facts">
+          <div class="fact"><dt>导出文件</dt><dd id="workbook-state">等待最终导出</dd></div>
+          <div class="fact"><dt>文件大小</dt><dd id="workbook-size">—</dd></div>
+          <div class="fact"><dt>更新时间</dt><dd id="workbook-time">—</dd></div>
+          <div class="fact"><dt>数据章节</dt><dd id="workbook-sheets">总表 + 0 个章节表</dd></div>
+        </dl>
+      </section>
+
+      <section class="detail-section" aria-labelledby="runtime-title">
+        <p class="section-label">后台任务</p>
+        <h2 id="runtime-title">运行状态</h2>
+        <dl class="facts">
+          <div class="fact"><dt>状态库</dt><dd id="database-state">检查中</dd></div>
+          <div class="fact"><dt>日志更新</dt><dd id="log-time">—</dd></div>
+          <div class="fact"><dt>最近错误</dt><dd id="last-error">无</dd></div>
+          <div class="fact"><dt>日志末行</dt><dd id="log-line" class="log-line" title="">—</dd></div>
+        </dl>
+      </section>
+    </div>
+
+    <p id="notice" class="notice" role="alert"></p>
+    <footer class="footer">
+      <span>只读监控</span>
+      <span id="api-time">数据时间 —</span>
+    </footer>
+  </main>
+
+  <script>
+    const POLL_INTERVAL_MS = 5000;
+    const REQUEST_TIMEOUT_MS = 8000;
+    const numberFormat = new Intl.NumberFormat("zh-CN");
+    const dateFormat = new Intl.DateTimeFormat("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    });
+
+    let pollTimer = 0;
+    let countdownTimer = 0;
+    let nextPollAt = 0;
+    let requestInFlight = false;
+
+    function setText(id, value) {
+      const node = document.getElementById(id);
+      const next = String(value);
+      if (node.textContent !== next) node.textContent = next;
+    }
+
+    function setTitledText(id, value) {
+      const node = document.getElementById(id);
+      const next = value || "—";
+      if (node.textContent !== next) node.textContent = next;
+      if (node.title !== next) node.title = next;
+    }
+
+    function formatCount(value) {
+      return numberFormat.format(Number(value || 0));
+    }
+
+    function formatDate(value) {
+      if (!value) return "—";
+      const date = new Date(value);
+      return Number.isNaN(date.valueOf()) ? value : dateFormat.format(date);
+    }
+
+    function formatBytes(value) {
+      const bytes = Number(value || 0);
+      if (!bytes) return "—";
+      const units = ["B", "KB", "MB", "GB"];
+      const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+      return `${(bytes / (1024 ** index)).toFixed(index === 0 ? 0 : 2)} ${units[index]}`;
+    }
+
+    function updateState(state, label) {
+      const dot = document.getElementById("state-dot");
+      dot.className = `state-dot ${state || "waiting"}`;
+      setText("state-label", label || "等待数据");
+    }
+
+    function renderStatus(data) {
+      const counts = data.counts || {};
+      const progress = data.progress || {};
+      const latest = data.latest || {};
+      const workbook = data.workbook || {};
+      const database = data.database || {};
+      const log = data.log || {};
+      const lastError = data.last_error || {};
+      const detailPercent = Math.max(0, Math.min(100, Number(progress.detail_percent || 0)));
+
+      updateState(data.state, data.state_label);
+      setText("sync-time", `同步于 ${dateFormat.format(new Date())}`);
+      setText("api-time", `数据时间 ${formatDate(data.updated_at)}`);
+      setText("detail-percent", `${detailPercent.toFixed(2)}%`);
+      document.getElementById("detail-bar").style.width = `${detailPercent}%`;
+      document.getElementById("detail-track").setAttribute("aria-valuenow", detailPercent.toFixed(2));
+
+      setText("records", formatCount(counts.records));
+      setText("detail-total", formatCount(counts.detail_total));
+      setText("detail-done", formatCount(counts.detail_done));
+      setText("detail-active", formatCount(counts.detail_in_progress));
+      setText("detail-pending", formatCount(counts.detail_pending));
+      setText("detail-error", formatCount(counts.detail_error));
+      setText("search-total", formatCount(counts.search_total));
+      setText("search-done", formatCount(counts.search_done));
+      setText("search-error", formatCount(counts.search_error));
+      setText("chapters", formatCount(counts.chapters));
+
+      setText("active-code", latest.active_code || "—");
+      setText("latest-code", latest.hs_code || "—");
+      setText("latest-time", formatDate(latest.scraped_at_utc));
+      setTitledText("active-url", latest.active_url);
+
+      setText("workbook-state", workbook.exists ? "已生成" : "等待最终导出");
+      setText("workbook-size", formatBytes(workbook.size_bytes));
+      setText("workbook-time", formatDate(workbook.modified_at));
+      setText("workbook-sheets", `总表 + ${formatCount(counts.chapters)} 个章节表`);
+      setText("database-state", database.exists ? "读取正常" : "尚未创建");
+      setText("log-time", formatDate(log.modified_at));
+      setText(
+        "last-error",
+        lastError.message ? `${lastError.http_status || ""} ${lastError.message}`.trim() : "无"
+      );
+      setTitledText("log-line", log.last_line);
+
+      const notice = document.getElementById("notice");
+      const message = data.ok ? "" : (data.message || "暂时无法读取采集状态");
+      if (notice.textContent !== message) notice.textContent = message;
+      notice.classList.toggle("visible", Boolean(message));
+    }
+
+    function renderNetworkError(error) {
+      updateState("error", "连接中断");
+      const notice = document.getElementById("notice");
+      const message = `监控接口暂时不可用：${error.message}`;
+      if (notice.textContent !== message) notice.textContent = message;
+      notice.classList.add("visible");
+    }
+
+    function scheduleNextPoll(delay = POLL_INTERVAL_MS) {
+      window.clearTimeout(pollTimer);
+      if (document.hidden) {
+        nextPollAt = 0;
+        setText("countdown", "页面暂停同步");
+        return;
+      }
+      nextPollAt = Date.now() + delay;
+      pollTimer = window.setTimeout(refreshStatus, delay);
+    }
+
+    async function refreshStatus() {
+      if (requestInFlight || document.hidden) {
+        scheduleNextPoll();
+        return;
+      }
+      requestInFlight = true;
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        const response = await fetch("/api/status", {
+          cache: "no-store",
+          signal: controller.signal,
+          headers: { Accept: "application/json" }
+        });
+        const data = await response.json();
+        if (!response.ok && data.database?.exists) {
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+        renderStatus(data);
+      } catch (error) {
+        renderNetworkError(error);
+      } finally {
+        window.clearTimeout(timeout);
+        requestInFlight = false;
+        scheduleNextPoll();
+      }
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        window.clearTimeout(pollTimer);
+        nextPollAt = 0;
+        setText("countdown", "页面暂停同步");
+      } else {
+        refreshStatus();
+      }
+    });
+
+    countdownTimer = window.setInterval(() => {
+      if (!nextPollAt || document.hidden) return;
+      const seconds = Math.max(0, Math.ceil((nextPollAt - Date.now()) / 1000));
+      setText("countdown", `${seconds} 秒后同步`);
+    }, 250);
+
+    window.addEventListener("pagehide", () => {
+      window.clearTimeout(pollTimer);
+      window.clearInterval(countdownTimer);
+    });
+
+    refreshStatus();
+  </script>
+</body>
+</html>

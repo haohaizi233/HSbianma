@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hsbianma-crawler"
+version = "0.1.0"
+description = "Restartable Chrome-rendered crawler for hsbianma.com"
+requires-python = ">=3.13"
+dependencies = [
+  "beautifulsoup4>=4.14,<5",
+  "lxml>=6,<7",
+  "playwright>=1.57,<2",
+]
+
+[project.scripts]
+hs-crawler = "hs_crawler.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]

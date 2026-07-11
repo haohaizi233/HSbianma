@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
+env/
+*.egg-info/
+build/
+dist/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime checkpoints and generated exports
+data/
+smoke-data/
+preview-exports/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.xlsx
+errors.csv
+.hs_codes.payload.json
+.hs_codes.xlsx.tmp
+*.inspect.ndjson
+
+# Crawler logs and diagnostics
+logs/
+artifacts/
+*.log
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+~$*
